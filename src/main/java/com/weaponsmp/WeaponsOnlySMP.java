@@ -207,5 +207,5 @@ public class WeaponsOnlySMP extends JavaPlugin implements Listener, CommandExecu
         cooldowns.put(fullKey, now);
         return true;
     }
-  }
-          
+    }
+                
