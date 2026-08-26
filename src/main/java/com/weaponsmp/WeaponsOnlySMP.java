@@ -14,6 +14,9 @@ import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.EntityShootBowEvent;
+import org.bukkit.event.entity.ProjectileHitEvent;
+import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
@@ -47,7 +50,7 @@ public class WeaponsOnlySMP extends JavaPlugin implements Listener, CommandExecu
         }
 
         switch (args[0].toLowerCase()) {
-            case "crownbreaker" -> player.getInventory().addItem(createItem(Material.NETHERITE_AXE, "§e§lCrown Breaker"));
+            case "crownbreaker" -> player.getInventory().addItem(createItem(Material.MACE, "§e§lCrown Breaker"));
             case "blasterbow" -> player.getInventory().addItem(createItem(Material.BOW, "§c§lBlaster Bow"));
             case "voidsword" -> player.getInventory().addItem(createItem(Material.NETHERITE_SWORD, "§5§lVoid Sword"));
             case "tidebreaker" -> player.getInventory().addItem(createItem(Material.TRIDENT, "§b§lTide Breaker"));
@@ -78,7 +81,28 @@ public class WeaponsOnlySMP extends JavaPlugin implements Listener, CommandExecu
         if (!item.hasItemMeta() || !item.getItemMeta().hasDisplayName()) return;
         String name = item.getItemMeta().getDisplayName();
 
-        if (name.contains("Shadow Sword")) {
+        if (name.contains("Crown Breaker")) {
+            if (event.getHand() != EquipmentSlot.HAND) return;
+            if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+                if (p.isSneaking()) {
+                    if (checkCooldown(p, "crown_slam", 30)) {
+                        p.getWorld().strikeLightning(p.getLocation());
+                        for (Entity e : p.getNearbyEntities(8, 8, 8)) {
+                            if (e instanceof LivingEntity target && e != p) {
+                                target.setVelocity(new Vector(0, 1.5, 0));
+                                target.damage(15.0, p);
+                            }
+                        }
+                        p.getWorld().playSound(p.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 0.5f);
+                    }
+                } else {
+                    if (checkCooldown(p, "crown_buff", 15)) {
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, 100, 1));
+                        p.getWorld().playSound(p.getLocation(), Sound.ITEM_ARMOR_EQUIP_NETHERITE, 1.0f, 1.0f);
+                    }
+                }
+            }
+        } else if (name.contains("Shadow Sword")) {
             if (event.getHand() != EquipmentSlot.HAND) return;
             if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
                 if (p.isSneaking()) {
@@ -163,6 +187,50 @@ public class WeaponsOnlySMP extends JavaPlugin implements Listener, CommandExecu
                     }
                 }
             }
+        } else if (name.contains("Tide Breaker")) {
+            if (event.getHand() != EquipmentSlot.HAND) return;
+            if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+                if (checkCooldown(p, "tide_boost", 10)) {
+                    p.setVelocity(p.getLocation().getDirection().multiply(2.5));
+                    p.getWorld().playSound(p.getLocation(), Sound.ITEM_TRIDENT_RIPTIDE_3, 1.0f, 1.0f);
+                }
+            } else if (event.getAction() == Action.LEFT_CLICK_AIR || event.getAction() == Action.LEFT_CLICK_BLOCK) {
+                if (checkCooldown(p, "tide_slam", 20)) {
+                    for (Entity e : p.getNearbyEntities(10, 10, 10)) {
+                        if (e instanceof LivingEntity target && e != p) {
+                            target.damage(12.0, p);
+                            target.setVelocity(new Vector(0, 1.0, 0));
+                        }
+                    }
+                    p.getWorld().playSound(p.getLocation(), Sound.ENTITY_DOLPHIN_SPLASH, 1.0f, 1.0f);
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    public void onProjectileHit(ProjectileHitEvent event) {
+        if (event.getEntity() instanceof Arrow arrow && arrow.getShooter() instanceof Player shooter) {
+            ItemStack bow = shooter.getInventory().getItemInMainHand();
+            if (bow.hasItemMeta() && bow.getItemMeta().hasDisplayName() && bow.getItemMeta().getDisplayName().contains("Blaster Bow")) {
+                Location loc = arrow.getLocation();
+                loc.getWorld().createExplosion(loc, 3.0f, false, false);
+                arrow.remove();
+            }
+        }
+    }
+
+    @EventHandler
+    public void onPlayerFish(PlayerFishEvent event) {
+        Player p = event.getPlayer();
+        ItemStack item = p.getInventory().getItemInMainHand();
+        if (item.hasItemMeta() && item.getItemMeta().hasDisplayName() && item.getItemMeta().getDisplayName().contains("Harpoon")) {
+            if (event.getCaught() != null) {
+                Entity caught = event.getCaught();
+                Vector pullVec = p.getLocation().toVector().subtract(caught.getLocation().toVector()).normalize().multiply(2.0);
+                caught.setVelocity(pullVec);
+                p.getWorld().playSound(p.getLocation(), Sound.ENTITY_FISHING_BOBBER_RETRIEVE, 1.0f, 1.5f);
+            }
         }
     }
 
@@ -207,4 +275,4 @@ public class WeaponsOnlySMP extends JavaPlugin implements Listener, CommandExecu
         return true;
     }
     }
-                                                                 
+                
